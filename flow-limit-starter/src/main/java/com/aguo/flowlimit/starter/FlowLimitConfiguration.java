@@ -79,6 +79,11 @@ abstract class FlowLimitConfiguration {
             redisFlowLimitInterceptor.setOwn(redisFlowLimitInterceptor);
         }
 
+        /**
+         * 设置拦截器的自我字段，自我字段保存的是用户的实现类，为了将用户实现的列注册到MVC中
+         *
+         * @param interceptor
+         */
         @Autowired(required = false)
         public void globalTokenBucketFlowLimitInterceptor(AbstractGlobalTokenBucketFlowLimitInterceptor interceptor) {
             interceptor.setOwn(interceptor);
