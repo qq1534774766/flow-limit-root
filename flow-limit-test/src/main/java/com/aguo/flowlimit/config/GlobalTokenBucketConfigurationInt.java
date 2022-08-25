@@ -1,7 +1,6 @@
 package com.aguo.flowlimit.config;
 
 import com.aguo.flowlimit.core.interceptor.AbstractGlobalTokenBucketFlowLimitInterceptor;
-import org.springframework.stereotype.Component;
 import org.springframework.web.servlet.config.annotation.InterceptorRegistration;
 
 import javax.servlet.http.HttpServletRequest;
@@ -12,7 +11,7 @@ import javax.servlet.http.HttpServletResponse;
  * @DateTime: 2022/8/22 14:45
  * @Description: TODO
  */
-@Component
+//@Component
 public class GlobalTokenBucketConfigurationInt extends AbstractGlobalTokenBucketFlowLimitInterceptor {
     @Override
     public void setInterceptorPathPatterns(InterceptorRegistration registry) {

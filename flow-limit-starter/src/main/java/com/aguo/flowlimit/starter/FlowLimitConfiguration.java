@@ -6,7 +6,6 @@ import com.aguo.flowlimit.core.interceptor.AbstractGlobalTokenBucketFlowLimitInt
 import com.aguo.flowlimit.core.interceptor.AbstractRedisFlowLimitInterceptor;
 import com.aguo.flowlimit.core.utils.FlowLimitCacheHelper;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.lang3.ObjectUtils;
 import org.springframework.beans.BeansException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
@@ -41,15 +40,10 @@ abstract class FlowLimitConfiguration {
         @ConditionalOnBean({IFlowLimit.class})
         public FlowLimitCacheHelper redisFlowLimitHelper(FlowLimitProperties.CounterFlowLimitProperties counterFlowLimitProperties,
                                                          @Autowired(required = false) RedisConnectionFactory redisConnectionFactory) {
-            FlowLimitCacheHelper flowLimitCacheHelper = null;
-            flowLimitCacheHelper = new FlowLimitCacheHelper(counterFlowLimitProperties.getDataSourceType());
-            if (ObjectUtils.isNotEmpty(redisConnectionFactory)) {
-                //redis可用
-                flowLimitCacheHelper.initRedisStrategyService(redisConnectionFactory);
-            }
-            //初始化本地缓存
-            flowLimitCacheHelper.initLocalStrategyService(counterFlowLimitProperties.getCounterHoldingTime(), counterFlowLimitProperties.getCounterHoldingTimeUnit());
-            return flowLimitCacheHelper;
+            return new FlowLimitCacheHelper(counterFlowLimitProperties.getDataSourceType(),
+                    redisConnectionFactory,
+                    counterFlowLimitProperties.getCounterHoldingTime(),
+                    counterFlowLimitProperties.getCounterHoldingTimeUnit());
         }
 
         /**

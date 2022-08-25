@@ -37,20 +37,32 @@ public class FlowLimitCacheHelper {
 
     private final CacheHelperFactory cacheHelperFactory;
 
-    public FlowLimitCacheHelper(CacheDataSourceTypeEnum strategy) {
+    public FlowLimitCacheHelper(CacheDataSourceTypeEnum strategy,
+                                RedisConnectionFactory redisConnectionFactory,
+                                List<Long> counterHoldingTime, TimeUnit timeUnit) {
         //指定策略
-        FlowLimitCacheHelper.strategy = strategy;
+        if (ObjectUtils.isNotEmpty(strategy)) {
+            FlowLimitCacheHelper.strategy = strategy;
+        } else {
+            FlowLimitCacheHelper.strategy = CacheDataSourceTypeEnum.Local;
+        }
         //工厂初始化
         this.cacheHelperFactory = new CacheHelperFactory();
+        if (ObjectUtils.isNotEmpty(redisConnectionFactory)) {
+            initRedisStrategyService(redisConnectionFactory);
+        }
+        if (ObjectUtils.allNotNull(counterHoldingTime, timeUnit)) {
+            initLocalStrategyService(counterHoldingTime, timeUnit);
+        }
     }
 
-    public void initRedisStrategyService(RedisConnectionFactory redisConnectionFactory) {
+    private void initRedisStrategyService(RedisConnectionFactory redisConnectionFactory) {
         //Redis策略初始化
         RedisStrategyService redisStrategyService = new RedisStrategyService(redisConnectionFactory);
         this.cacheHelperFactory.addStrategyService(CacheDataSourceTypeEnum.Redis, redisStrategyService);
     }
 
-    public void initLocalStrategyService(List<Long> counterHoldingTime, TimeUnit timeUnit) {
+    private void initLocalStrategyService(List<Long> counterHoldingTime, TimeUnit timeUnit) {
         //本地缓存策略初始化
         LocalStrategyService localStrategyService = new LocalStrategyService(counterHoldingTime, timeUnit);
         //构建缓存对象
