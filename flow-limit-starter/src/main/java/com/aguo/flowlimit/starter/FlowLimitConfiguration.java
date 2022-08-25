@@ -5,7 +5,6 @@ import com.aguo.flowlimit.core.aspect.AbstractGlobalTokenBucketFlowLimitAspect;
 import com.aguo.flowlimit.core.interceptor.AbstractGlobalTokenBucketFlowLimitInterceptor;
 import com.aguo.flowlimit.core.interceptor.AbstractRedisFlowLimitInterceptor;
 import com.aguo.flowlimit.core.utils.FlowLimitCacheHelper;
-import com.aguo.flowlimit.core.utils.StartTipUtil;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.ObjectUtils;
 import org.springframework.beans.BeansException;

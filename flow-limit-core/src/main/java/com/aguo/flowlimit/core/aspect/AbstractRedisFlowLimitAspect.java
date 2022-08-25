@@ -2,13 +2,11 @@ package com.aguo.flowlimit.core.aspect;
 
 import com.aguo.flowlimit.core.AbstractFlowLimit;
 import com.aguo.flowlimit.core.utils.FlowLimitCacheHelper;
-import com.aguo.flowlimit.core.utils.StartTipUtil;
+import com.aguo.flowlimit.core.utils.ShowUtil;
 import org.aspectj.lang.JoinPoint;
 import org.aspectj.lang.annotation.Around;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.util.StringUtils;
 
-import javax.annotation.PostConstruct;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -23,9 +21,7 @@ import java.util.stream.Collectors;
  */
 public abstract class AbstractRedisFlowLimitAspect extends AbstractFlowLimit<JoinPoint>
         implements IFlowLimitAspect<JoinPoint> {
-
-
-    private static TimeUnit timeUnit;
+    private TimeUnit timeUnit;
     private FlowLimitCacheHelper redisHelper;
     /**
      * 是否全局限制，即所有用户所有操作均被计数限制.
@@ -55,81 +51,82 @@ public abstract class AbstractRedisFlowLimitAspect extends AbstractFlowLimit<Joi
      */
     private List<Integer> counterLimitNumber;
 
-    public AbstractRedisFlowLimitAspect() {
-
+    public AbstractRedisFlowLimitAspect setTimeUnit(TimeUnit timeUnit) {
+        this.timeUnit = timeUnit;
+        return this;
     }
 
-    public AbstractRedisFlowLimitAspect(FlowLimitCacheHelper redisHelper,
-                                        FlowLimitProperties.CounterFlowLimitProperties redisFlowLimitProperties) {
-        setRedisTemplate(redisHelper);
-        setCounterKeyProperties(redisFlowLimitProperties);
-        initBeanProperties();
-    }
-
-    @Autowired(required = false)
-    public AbstractRedisFlowLimitAspect setRedisTemplate(FlowLimitCacheHelper redisHelper) {
+    public AbstractRedisFlowLimitAspect setRedisHelper(FlowLimitCacheHelper redisHelper) {
         this.redisHelper = redisHelper;
         return this;
     }
 
-    /**
-     * 初始化所有的成员遍历
-     *
-     * @param redisFlowLimitProperties 配置类
-     * @return this
-     */
-    @Autowired(required = false)
-    public AbstractRedisFlowLimitAspect setCounterKeyProperties(FlowLimitProperties.CounterFlowLimitProperties redisFlowLimitProperties) {
-        //封装公共属性
-        this.enabledGlobalLimit = redisFlowLimitProperties.isEnabledGlobalLimit();
-        //封装properties
-        this.prefixKey = StringUtils.isEmpty(redisFlowLimitProperties.getPrefixKey()) ? "" : (redisFlowLimitProperties.getPrefixKey());
-        this.counterHoldingTime = redisFlowLimitProperties.getCounterHoldingTime();
-        this.counterLimitNumber = redisFlowLimitProperties.getCounterLimitNumber();
-        timeUnit = redisFlowLimitProperties.getCounterHoldingTimeUnit();
-        joinCounterKeys(redisFlowLimitProperties);
+    public AbstractRedisFlowLimitAspect setEnabledGlobalLimit(boolean enabledGlobalLimit) {
+        this.enabledGlobalLimit = enabledGlobalLimit;
         return this;
     }
 
+    public AbstractRedisFlowLimitAspect setPrefixKey(String prefixKey) {
+        this.prefixKey = prefixKey;
+        return this;
+    }
+
+    public AbstractRedisFlowLimitAspect setCounterKeys(List<String> counterKeys) {
+        this.counterKeys = counterKeys;
+        return this;
+    }
+
+    public AbstractRedisFlowLimitAspect setCounterHoldingTime(List<Long> counterHoldingTime) {
+        this.counterHoldingTime = counterHoldingTime;
+        return this;
+    }
+
+    public AbstractRedisFlowLimitAspect setCounterLimitNumber(List<Integer> counterLimitNumber) {
+        this.counterLimitNumber = counterLimitNumber;
+        return this;
+    }
+
+    public AbstractRedisFlowLimitAspect() {
+
+    }
+
     /**
-     * bean的初始化
+     * bean的初始化,构建本bean对象。务必最后调用
      *
      * @return this
      */
-    @PostConstruct
-    public AbstractRedisFlowLimitAspect initBeanProperties() {
+    public AbstractRedisFlowLimitAspect build() {
+        initCounterKeys();
         if (enabledFlowLimit()) {
-            StartTipUtil.showBanner();
+            ShowUtil.showBanner();
         }
         return this;
     }
 
     /**
      * 对公共计数器key进行拼接
-     *
-     * @param redisFlowLimitProperties 配置类
      */
-    private void joinCounterKeys(FlowLimitProperties.CounterFlowLimitProperties redisFlowLimitProperties) {
+    private void initCounterKeys() {
         String appendKeyWithMode = appendCounterKeyWithMode();
-        this.counterKeys = Optional.ofNullable(redisFlowLimitProperties.getCounterKeys())
+        this.counterKeys = Optional.ofNullable(this.counterKeys)
                 .map(keys -> keys.stream().map(key -> prefixKey + key + appendKeyWithMode).collect(Collectors.toList()))
-                .orElse(getCounterKeysUseUUID(redisFlowLimitProperties));
+                .orElse(getCounterKeysUseUUID());
     }
 
     /**
      * 如果配置文件中没有配置counter的key，那么则会使用UUID作为key
      *
-     * @param redisFlowLimitProperties 配置类
      * @return 拼接完成的key
      */
-    private ArrayList<String> getCounterKeysUseUUID(FlowLimitProperties.CounterFlowLimitProperties redisFlowLimitProperties) {
+    private ArrayList<String> getCounterKeysUseUUID() {
         String appendKeyWithMode = appendCounterKeyWithMode();
         ArrayList<String> keys = new ArrayList<>();
-        for (int i = 0; i < redisFlowLimitProperties.getCounterHoldingTime().size(); i++) {
+        for (int i = 0; i < this.counterHoldingTime.size(); i++) {
             keys.add(prefixKey + "flowlimit:" + UUID.randomUUID().toString().replaceAll("-", "").substring(0, 5) + ":" + appendKeyWithMode);
         }
         return keys;
     }
+
 
     /**
      * 追加模式，有AOP模式和拦截器模式。前面要有个分号

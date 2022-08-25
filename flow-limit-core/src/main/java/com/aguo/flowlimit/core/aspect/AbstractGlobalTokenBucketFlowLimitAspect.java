@@ -1,12 +1,11 @@
 package com.aguo.flowlimit.core.aspect;
 
 import com.aguo.flowlimit.core.AbstractFlowLimit;
-import com.aguo.flowlimit.core.utils.StartTipUtil;
+import com.aguo.flowlimit.core.utils.ShowUtil;
 import com.google.common.util.concurrent.RateLimiter;
 import org.apache.commons.lang3.ObjectUtils;
 import org.aspectj.lang.JoinPoint;
 import org.aspectj.lang.annotation.Around;
-import org.springframework.beans.factory.annotation.Autowired;
 
 import java.util.concurrent.TimeUnit;
 
@@ -20,10 +19,13 @@ public abstract class AbstractGlobalTokenBucketFlowLimitAspect
         extends AbstractFlowLimit<JoinPoint> implements IFlowLimitAspect<JoinPoint> {
     private static RateLimiter rateLimiter;
     private static Long timeout;
-
     private static Integer tokenAcquire = 1;
 
     public AbstractGlobalTokenBucketFlowLimitAspect() {
+    }
+
+    public static void setRateLimiter(long permitsPerSecond, long warmupPeriod) {
+        rateLimiter = RateLimiter.create(permitsPerSecond, warmupPeriod, TimeUnit.MILLISECONDS);
     }
 
     /**
@@ -44,12 +46,14 @@ public abstract class AbstractGlobalTokenBucketFlowLimitAspect
         AbstractGlobalTokenBucketFlowLimitAspect.tokenAcquire = tokenAcquire;
     }
 
-    @Autowired(required = false)
-    public void initRateLimiter(FlowLimitProperties.GlobalTokenBucketFlowLimitProperties tokenBucketProperties) {
-        rateLimiter = RateLimiter.create(tokenBucketProperties.getPermitsPerSecond(), tokenBucketProperties.getWarmupPeriod(), TimeUnit.MILLISECONDS);
-        timeout = tokenBucketProperties.getTimeout();
+    /**
+     * bean的初始化,构建本bean对象。务必最后调用
+     *
+     * @return this
+     */
+    public void build() {
         setEnabled(ObjectUtils.isNotEmpty(rateLimiter));
-        if (isEnabled()) StartTipUtil.showBanner();
+        if (isEnabled()) ShowUtil.showBanner();
     }
 
     @Around("pointcut()")

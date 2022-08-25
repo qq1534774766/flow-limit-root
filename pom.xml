@@ -9,7 +9,6 @@
     <modules>
         <module>flow-limit-core</module>
         <module>flow-limit-test</module>
-        <module>flow-limit-autoconfigure</module>
         <module>flow-limit-starter</module>
     </modules>
     <name>flow-limit-root</name>

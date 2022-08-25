@@ -1,9 +1,8 @@
-package com.aguo.flowlimit.core.utils;
+package com.aguo.flowlimit.starter;
 
-import cn.sinohealth.flowlimit.springboot.starter.IFlowLimit;
-import cn.sinohealth.flowlimit.springboot.starter.aspect.IFlowLimitAspect;
-import cn.sinohealth.flowlimit.springboot.starter.interceptor.IFlowLimitInterceptor;
-import cn.sinohealth.flowlimit.springboot.starter.properties.FlowLimitProperties;
+import com.aguo.flowlimit.core.IFlowLimit;
+import com.aguo.flowlimit.core.aspect.IFlowLimitAspect;
+import com.aguo.flowlimit.core.interceptor.IFlowLimitInterceptor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationContext;
 import org.springframework.util.ObjectUtils;
@@ -21,25 +20,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 @Slf4j
 public class StartTipUtil {
 
-    /**
-     * 当有多个流量限制器实现类，为了避免重复展示，当展示完banner，即设置为TRUE。
-     */
-    private static boolean isReady = false;
 
-    /**
-     * 展示启动成功的banner。
-     */
-    public static void showBanner() {
-        if (!isReady) {
-            log.info("\n _______  __        ______   ____    __    ____     __       __  .___  ___.  __  .___________.\n" +
-                    "|   ____||  |      /  __  \\  \\   \\  /  \\  /   /    |  |     |  | |   \\/   | |  | |           |\n" +
-                    "|  |__   |  |     |  |  |  |  \\   \\/    \\/   /     |  |     |  | |  \\  /  | |  | `---|  |----`\n" +
-                    "|   __|  |  |     |  |  |  |   \\            /      |  |     |  | |  |\\/|  | |  |     |  |     \n" +
-                    "|  |     |  `----.|  `--'  |    \\    /\\    /       |  `----.|  | |  |  |  | |  |     |  |     \n" +
-                    "|__|     |_______| \\______/      \\__/  \\__/        |_______||__| |__|  |__| |__|     |__|     \n");
-            isReady = true;
-        }
-    }
 
     /**
      * starter启动前的必要检查和日志输出
