@@ -3,7 +3,6 @@ package com.aguo.flowlimit.core.interceptor;
 import com.aguo.flowlimit.core.aspect.AbstractGlobalTokenBucketFlowLimitAspect;
 import com.aguo.flowlimit.core.utils.InterceptorUtil;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.lang3.ObjectUtils;
 import org.aspectj.lang.JoinPoint;
 import org.springframework.web.servlet.config.annotation.InterceptorRegistration;
 import org.springframework.web.servlet.config.annotation.InterceptorRegistry;
@@ -107,17 +106,6 @@ public abstract class AbstractGlobalTokenBucketFlowLimitInterceptor
 
         @Override
         public final void pointcut() {
-        }
-
-        @Override
-        protected Object otherHandle(JoinPoint joinPoint, boolean isReject, Object rejectResult) throws Throwable {
-            //true放行
-            if (ObjectUtils.isNotEmpty(rejectResult) && rejectResult instanceof Boolean) {
-                return rejectResult;
-            }
-            //被拒绝 isReject=true，返回false
-            //没有被拒绝
-            return !isReject;
         }
 
     }

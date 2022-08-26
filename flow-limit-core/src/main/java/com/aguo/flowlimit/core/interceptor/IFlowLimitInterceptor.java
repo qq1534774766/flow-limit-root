@@ -1,6 +1,7 @@
 package com.aguo.flowlimit.core.interceptor;
 
 import com.aguo.flowlimit.core.IFlowLimit;
+import org.apache.commons.lang3.ObjectUtils;
 import org.aspectj.lang.JoinPoint;
 import org.springframework.web.servlet.HandlerInterceptor;
 
@@ -44,4 +45,15 @@ public interface IFlowLimitInterceptor extends HandlerInterceptor, IFlowLimit<Jo
      * @return
      */
     Object rejectHandle(HttpServletRequest request, HttpServletResponse response, Object handler) throws Exception;
+
+    @Override
+    default Object otherHandle(JoinPoint obj, boolean isReject, Object rejectResult) throws Throwable {
+        //true放行
+        if (ObjectUtils.isNotEmpty(rejectResult) && rejectResult instanceof Boolean) {
+            return rejectResult;
+        }
+        //被拒绝 isReject=true，返回false
+        //没有被拒绝
+        return !isReject;
+    }
 }

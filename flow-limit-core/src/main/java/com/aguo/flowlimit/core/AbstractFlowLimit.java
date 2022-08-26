@@ -1,7 +1,6 @@
 package com.aguo.flowlimit.core;
 
 import lombok.Data;
-import org.aspectj.lang.ProceedingJoinPoint;
 
 /**
  * @Author: wenqiaogang
@@ -81,28 +80,6 @@ public abstract class AbstractFlowLimit<T> implements IFlowLimit<T> {
      */
     protected abstract Object rejectHandle(T obj) throws Throwable;
 
-    /**
-     * 其他操作，拒绝策略选择抛出异常的形式，则该方法不会被执行到！
-     * <br/>
-     * 用于放行环绕增强@Around正常调用操作。
-     * <br/>
-     * 当未执行拒绝策略时，且是环绕增强时，会自动执行相应方法。
-     * <br/>
-     * 你也可以重写该方法，自定义实现。
-     *
-     * @param obj          连接点
-     * @param rejectResult 拒绝策略执行结果。当且仅当拒绝策略被执行才不为null
-     * @return 可以是Processobj.process()的方法执行结果，前提是使用的是环绕增强！
-     */
-    protected Object otherHandle(T obj, boolean isReject, Object rejectResult) throws Throwable {
-        if (!isReject && obj instanceof ProceedingJoinPoint) {
-            //默认：拒绝策略未执行或执行了但选择放行，rejectResult即为null，若使用的是AOP中的环绕增强，则执行
-            return ((ProceedingJoinPoint) obj).proceed();
-        }
-        //执行拒绝策略并拒绝  -->取消调用接口
-        // 非环绕方法。  -->无需调用，即null
-        return rejectResult;
-    }
 
     /**
      * 重置限流器、限流等
