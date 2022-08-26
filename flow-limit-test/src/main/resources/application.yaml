@@ -1,2 +1,23 @@
 flowlimit:
   enabled: true
+  counter-flow-limit-properties:
+    prefix-key: "test:"
+    counter-holding-time:
+      - 5
+      - 60
+    counter-holding-time-unit: seconds
+    counter-keys:
+      - "k1"
+      - "k2"
+    counter-limit-number:
+      - 6
+      - 50
+    data-source-type: redis
+    enabled-global-limit: false
+  global-token-bucket-flow-limit-properties:
+    permits-per-second: 2
+    timeout: 2
+    warmup-period: 2
+spring:
+  redis:
+    host: 1.1.1.2

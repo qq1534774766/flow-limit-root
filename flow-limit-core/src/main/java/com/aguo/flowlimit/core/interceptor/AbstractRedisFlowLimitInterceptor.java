@@ -1,7 +1,9 @@
 package com.aguo.flowlimit.core.interceptor;
 
 import com.aguo.flowlimit.core.aspect.AbstractRedisFlowLimitAspect;
+import com.aguo.flowlimit.core.utils.FlowLimitCacheHelper;
 import com.aguo.flowlimit.core.utils.InterceptorUtil;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.ObjectUtils;
 import org.aspectj.lang.JoinPoint;
 import org.springframework.web.servlet.config.annotation.InterceptorRegistration;
@@ -11,16 +13,20 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 
 /**
  * @Author: wenqiaogang
  * @DateTime: 2022/7/29 11:07
  * @Description: 使用基于类的适配器模式，在RedisAspect基础上改造
  */
-public abstract class AbstractRedisFlowLimitInterceptor extends AbstractRedisFlowLimitAspect
+@Slf4j
+public abstract class AbstractRedisFlowLimitInterceptor
         implements IFlowLimitInterceptor, WebMvcConfigurer {
 
+    private AbstractRedisFlowLimitAspect redisFlowLimitAspect = new RedisFlowLimitAspectImpl();
 
     /**
      * 存放HttpServletRequest，HttpServletResponse
@@ -33,17 +39,29 @@ public abstract class AbstractRedisFlowLimitInterceptor extends AbstractRedisFlo
 
     @Override
     public final boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) throws Exception {
-        if (!isEnabled()) return true;
+        if (!redisFlowLimitAspect.isEnabled()) return true;
         HashMap<String, Object> map = new HashMap<>();
         map.put("request", request);
         map.put("response", response);
         map.put("handler", handler);
         threadLocalMap.set(map);
         try {
-            return (boolean) flowLimitProcess(null);
+            return (boolean) redisFlowLimitAspect.flowLimitProcess(null);
         } catch (Throwable e) {
             throw new RuntimeException(e);
         }
+    }
+
+    @Override
+    public boolean limitProcess(JoinPoint joinPoint) {
+        return redisFlowLimitAspect.limitProcess(null);
+    }
+
+    @Override
+    public void addInterceptors(InterceptorRegistry registry) {
+        //注册用户的拦截器
+        setInterceptorPathPatterns(registry.addInterceptor(getOwn()));
+        log.info("拦截器注册成功：{}", getOwn().getClass().getName());
     }
 
     @Override
@@ -51,16 +69,23 @@ public abstract class AbstractRedisFlowLimitInterceptor extends AbstractRedisFlo
         threadLocalMap.remove();//防止内存泄漏
     }
 
-    @Override
-    public void addInterceptors(InterceptorRegistry registry) {
-        //注册用户的拦截器
-        setInterceptorPathPatterns(registry.addInterceptor(getOwn()));
+    /**
+     * 因为是抽象类，没办法使用建造者模式，故使用本方法模拟。
+     *
+     * @param own
+     */
+    public void build(AbstractRedisFlowLimitInterceptor own,
+                      TimeUnit timeUnit,
+                      FlowLimitCacheHelper redisHelper,
+                      boolean enabledGlobalLimit,
+                      String prefixKey,
+                      List<String> counterKeys,
+                      List<Long> counterHoldingTime,
+                      List<Integer> counterLimitNumber) {
+        redisFlowLimitAspect.build(timeUnit, redisHelper, enabledGlobalLimit, prefixKey, counterKeys, counterHoldingTime, counterLimitNumber);
+        this.own = own;
     }
 
-    @Override
-    public String appendCounterKeyWithMode() {
-        return "interceptor:";
-    }
 
     /**
      * 设置拦截器的拦截配置，比如路径配置等
@@ -68,58 +93,55 @@ public abstract class AbstractRedisFlowLimitInterceptor extends AbstractRedisFlo
      * @param registry
      */
     public abstract void setInterceptorPathPatterns(InterceptorRegistration registry);
-    //endregion
 
-    //region 适配器方法，为了拦截器方法能适配AOP的方法
-    @Override
-    protected boolean filterRequest(JoinPoint obj) {
-        return InterceptorUtil.filterRequest(this, threadLocalMap);
-    }
-
-    @Override
-    protected boolean beforeLimitingHappenWhetherContinueLimit(JoinPoint obj) {
-        return InterceptorUtil.beforeLimitingHappenWhetherContinueLimit(this, threadLocalMap);
-    }
-
-    @Override
-    protected Object rejectHandle(JoinPoint obj) throws Throwable {
-        return InterceptorUtil.rejectHandle(this, threadLocalMap);
-    }
-
-
-    @Override
-    protected String appendCounterKeyWithUserId(JoinPoint joinPoint) {
-        return InterceptorUtil.appendCounterKeyWithUserId(this, threadLocalMap);
-    }
-
-    //endregion
-    @Override
-    protected Object otherHandle(JoinPoint obj, boolean isReject, Object rejectResult) throws Throwable {
-        //true放行
-        if (ObjectUtils.isNotEmpty(rejectResult) && rejectResult instanceof Boolean) {
-            return rejectResult;
-        }
-        //被拒绝 isReject=true，返回false
-        //没有被拒绝
-        return !isReject;
-    }
-
-
-    //region 其他方法
-
-    /**
-     * 最终方法，因为拦截器适配了AOP 因此本方法失去了意义
-     */
-    @Override
-    public final void pointcut() {
-    }
 
     public AbstractRedisFlowLimitInterceptor getOwn() {
         return own;
     }
 
-    public void setOwn(AbstractRedisFlowLimitInterceptor own) {
-        this.own = own;
+    private class RedisFlowLimitAspectImpl extends AbstractRedisFlowLimitAspect {
+
+        @Override
+        protected boolean filterRequest(JoinPoint joinPoint) {
+            return InterceptorUtil.filterRequest(AbstractRedisFlowLimitInterceptor.this, threadLocalMap);
+        }
+
+
+        @Override
+        protected boolean beforeLimitingHappenWhetherContinueLimit(JoinPoint joinPoint) {
+            return InterceptorUtil.beforeLimitingHappenWhetherContinueLimit(AbstractRedisFlowLimitInterceptor.this, threadLocalMap);
+        }
+
+        @Override
+        protected Object rejectHandle(JoinPoint joinPoint) throws Throwable {
+            return InterceptorUtil.rejectHandle(AbstractRedisFlowLimitInterceptor.this, threadLocalMap);
+        }
+
+        @Override
+        public String appendCounterKeyWithMode() {
+            return "interceptor:";
+        }
+
+        @Override
+        protected String appendCounterKeyWithUserId(JoinPoint joinPoint) {
+            return InterceptorUtil.appendCounterKeyWithUserId(AbstractRedisFlowLimitInterceptor.this, threadLocalMap);
+        }
+
+        @Override
+        protected Object otherHandle(JoinPoint joinPoint, boolean isReject, Object rejectResult) throws Throwable {
+            //true放行
+            if (ObjectUtils.isNotEmpty(rejectResult) && rejectResult instanceof Boolean) {
+                return rejectResult;
+            }
+            //被拒绝 isReject=true，返回false
+            //没有被拒绝
+            return !isReject;
+        }
+
+        @Override
+        public final void pointcut() {
+        }
+
     }
     //endregion
 }

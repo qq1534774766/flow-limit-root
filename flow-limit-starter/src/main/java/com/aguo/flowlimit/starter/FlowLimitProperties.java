@@ -28,7 +28,7 @@ public class FlowLimitProperties {
     /**
      * google 令牌桶算法，配置类
      */
-    private GlobalTokenBucketFlowLimitProperties GlobaltokenBucketFlowLimitProperties;
+    private GlobalTokenBucketFlowLimitProperties GlobalTokenBucketFlowLimitProperties;
 
     public boolean isEnabled() {
         return enabled;

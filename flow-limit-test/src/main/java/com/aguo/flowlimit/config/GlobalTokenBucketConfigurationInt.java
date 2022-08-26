@@ -13,16 +13,11 @@ import javax.servlet.http.HttpServletResponse;
  */
 //@Component
 public class GlobalTokenBucketConfigurationInt extends AbstractGlobalTokenBucketFlowLimitInterceptor {
-    @Override
-    public void setInterceptorPathPatterns(InterceptorRegistration registry) {
-        registry.addPathPatterns("/**/**");
-    }
 
     @Override
     public boolean filterRequest(HttpServletRequest request, HttpServletResponse response, Object handler) {
         return false;
     }
-
 
     @Override
     public boolean beforeLimitingHappenWhetherContinueLimit(HttpServletRequest request, HttpServletResponse response, Object handler) {
@@ -36,5 +31,11 @@ public class GlobalTokenBucketConfigurationInt extends AbstractGlobalTokenBucket
         response.getWriter().write("接口调用频繁");
         response.setStatus(500);
         return handler;
+    }
+
+
+    @Override
+    public void setInterceptorPathPatterns(InterceptorRegistration registry) {
+
     }
 }

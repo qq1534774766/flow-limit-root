@@ -18,13 +18,13 @@ import java.util.concurrent.TimeUnit;
 public abstract class AbstractGlobalTokenBucketFlowLimitAspect
         extends AbstractFlowLimit<JoinPoint> implements IFlowLimitAspect<JoinPoint> {
     private static RateLimiter rateLimiter;
-    private static Long timeout;
-    private static Integer tokenAcquire = 1;
+    private static long timeout;
+    private static int tokenAcquire = 1;
 
     public AbstractGlobalTokenBucketFlowLimitAspect() {
     }
 
-    public static void setRateLimiter(long permitsPerSecond, long warmupPeriod) {
+    public static void setRateLimiter(double permitsPerSecond, long warmupPeriod) {
         rateLimiter = RateLimiter.create(permitsPerSecond, warmupPeriod, TimeUnit.MILLISECONDS);
     }
 
@@ -33,7 +33,7 @@ public abstract class AbstractGlobalTokenBucketFlowLimitAspect
      *
      * @param timeout
      */
-    public static void setTimeout(Long timeout) {
+    public static void setTimeout(long timeout) {
         AbstractGlobalTokenBucketFlowLimitAspect.timeout = timeout;
     }
 
@@ -42,16 +42,20 @@ public abstract class AbstractGlobalTokenBucketFlowLimitAspect
      *
      * @param tokenAcquire
      */
-    public static void setTokenAcquire(Integer tokenAcquire) {
+    public static void setTokenAcquire(int tokenAcquire) {
         AbstractGlobalTokenBucketFlowLimitAspect.tokenAcquire = tokenAcquire;
     }
 
     /**
-     * bean的初始化,构建本bean对象。务必最后调用
+     * bean的初始化,构建本bean对象。<br/>
+     * 因为是抽象类，没办法使用建造者模式，故使用本方法模拟。
      *
      * @return this
      */
-    public void build() {
+    public void build(double permitsPerSecond, long warmupPeriod, long timeout, int tokenAcquire) {
+        setRateLimiter(permitsPerSecond, warmupPeriod);
+        setTimeout(Math.max(0, timeout));
+        setTokenAcquire(tokenAcquire);
         setEnabled(ObjectUtils.isNotEmpty(rateLimiter));
         if (isEnabled()) ShowUtil.showBanner();
     }

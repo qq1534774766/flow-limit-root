@@ -35,11 +35,25 @@ public class FlowLimitCacheHelper {
      */
     private static CacheDataSourceTypeEnum strategy;
 
-    private final CacheHelperFactory cacheHelperFactory;
+    private CacheHelperFactory cacheHelperFactory;
 
     public FlowLimitCacheHelper(CacheDataSourceTypeEnum strategy,
                                 RedisConnectionFactory redisConnectionFactory,
                                 List<Long> counterHoldingTime, TimeUnit timeUnit) {
+        build(strategy, redisConnectionFactory, counterHoldingTime, timeUnit);
+    }
+
+    /**
+     * 建造缓存帮助器
+     *
+     * @param strategy
+     * @param redisConnectionFactory
+     * @param counterHoldingTime
+     * @param timeUnit
+     */
+    public void build(CacheDataSourceTypeEnum strategy,
+                      RedisConnectionFactory redisConnectionFactory,
+                      List<Long> counterHoldingTime, TimeUnit timeUnit) {
         //指定策略
         if (ObjectUtils.isNotEmpty(strategy)) {
             FlowLimitCacheHelper.strategy = strategy;

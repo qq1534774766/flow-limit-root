@@ -21,7 +21,13 @@ import java.util.stream.Collectors;
  */
 public abstract class AbstractRedisFlowLimitAspect extends AbstractFlowLimit<JoinPoint>
         implements IFlowLimitAspect<JoinPoint> {
+    /**
+     * 计数器的时间单位
+     */
     private TimeUnit timeUnit;
+    /**
+     * 缓存帮助器
+     */
     private FlowLimitCacheHelper redisHelper;
     /**
      * 是否全局限制，即所有用户所有操作均被计数限制.
@@ -51,56 +57,33 @@ public abstract class AbstractRedisFlowLimitAspect extends AbstractFlowLimit<Joi
      */
     private List<Integer> counterLimitNumber;
 
-    public AbstractRedisFlowLimitAspect setTimeUnit(TimeUnit timeUnit) {
-        this.timeUnit = timeUnit;
-        return this;
-    }
-
-    public AbstractRedisFlowLimitAspect setRedisHelper(FlowLimitCacheHelper redisHelper) {
-        this.redisHelper = redisHelper;
-        return this;
-    }
-
-    public AbstractRedisFlowLimitAspect setEnabledGlobalLimit(boolean enabledGlobalLimit) {
-        this.enabledGlobalLimit = enabledGlobalLimit;
-        return this;
-    }
-
-    public AbstractRedisFlowLimitAspect setPrefixKey(String prefixKey) {
-        this.prefixKey = prefixKey;
-        return this;
-    }
-
-    public AbstractRedisFlowLimitAspect setCounterKeys(List<String> counterKeys) {
-        this.counterKeys = counterKeys;
-        return this;
-    }
-
-    public AbstractRedisFlowLimitAspect setCounterHoldingTime(List<Long> counterHoldingTime) {
-        this.counterHoldingTime = counterHoldingTime;
-        return this;
-    }
-
-    public AbstractRedisFlowLimitAspect setCounterLimitNumber(List<Integer> counterLimitNumber) {
-        this.counterLimitNumber = counterLimitNumber;
-        return this;
-    }
 
     public AbstractRedisFlowLimitAspect() {
 
     }
 
+    public AbstractRedisFlowLimitAspect(TimeUnit timeUnit, FlowLimitCacheHelper redisHelper, boolean enabledGlobalLimit, String prefixKey, List<String> counterKeys, List<Long> counterHoldingTime, List<Integer> counterLimitNumber) {
+        build(timeUnit, redisHelper, enabledGlobalLimit, prefixKey, counterKeys, counterHoldingTime, counterLimitNumber);
+    }
+
     /**
-     * bean的初始化,构建本bean对象。务必最后调用
+     * bean的初始化,构建本bean对象。<br/>
+     * 因为是抽象类，没办法使用建造者模式，故使用本方法模拟。
      *
      * @return this
      */
-    public AbstractRedisFlowLimitAspect build() {
+    public void build(TimeUnit timeUnit, FlowLimitCacheHelper redisHelper, boolean enabledGlobalLimit, String prefixKey, List<String> counterKeys, List<Long> counterHoldingTime, List<Integer> counterLimitNumber) {
+        this.timeUnit = timeUnit;
+        this.redisHelper = redisHelper;
+        this.enabledGlobalLimit = enabledGlobalLimit;
+        this.prefixKey = prefixKey;
+        this.counterKeys = counterKeys;
+        this.counterHoldingTime = counterHoldingTime;
+        this.counterLimitNumber = counterLimitNumber;
         initCounterKeys();
         if (enabledFlowLimit()) {
             ShowUtil.showBanner();
         }
-        return this;
     }
 
     /**

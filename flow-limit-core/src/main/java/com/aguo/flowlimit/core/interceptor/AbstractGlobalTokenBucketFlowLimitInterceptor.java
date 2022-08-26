@@ -2,6 +2,7 @@ package com.aguo.flowlimit.core.interceptor;
 
 import com.aguo.flowlimit.core.aspect.AbstractGlobalTokenBucketFlowLimitAspect;
 import com.aguo.flowlimit.core.utils.InterceptorUtil;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.ObjectUtils;
 import org.aspectj.lang.JoinPoint;
 import org.springframework.web.servlet.config.annotation.InterceptorRegistration;
@@ -16,12 +17,13 @@ import java.util.Map;
 /**
  * @Author: wenqiaogang
  * @DateTime: 2022/8/22 14:38
- * @Description: 抽象的流量限制器，
+ * @Description: 抽象的流量限制器，子类需要继承本类
  */
+@Slf4j
 public abstract class AbstractGlobalTokenBucketFlowLimitInterceptor
-        extends AbstractGlobalTokenBucketFlowLimitAspect
         implements IFlowLimitInterceptor, WebMvcConfigurer {
     // 成员变量
+    private GlobalTokenBucketFlowLimitAspectImpl aspectImpl = new GlobalTokenBucketFlowLimitAspectImpl();
     /**
      * 存放HttpServletRequest，HttpServletResponse
      */
@@ -31,28 +33,31 @@ public abstract class AbstractGlobalTokenBucketFlowLimitInterceptor
      */
     private AbstractGlobalTokenBucketFlowLimitInterceptor own;
 
-    /**
-     * 拦截器模式下，不需要指定切点
-     */
-    @Override
-    public final void pointcut() {
-
-    }
-
-
     @Override
     public final boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) throws Exception {
-        if (!isEnabled()) return true;
+        if (!aspectImpl.isEnabled()) return true;
         HashMap<String, Object> map = new HashMap<>();
         map.put("request", request);
         map.put("response", response);
         map.put("handler", handler);
         threadLocalMap.set(map);
         try {
-            return (boolean) flowLimitProcess(null);
+            return (boolean) aspectImpl.flowLimitProcess(null);
         } catch (Throwable e) {
             throw new RuntimeException(e);
         }
+    }
+
+    @Override
+    public boolean limitProcess(JoinPoint joinPoint) {
+        return aspectImpl.limitProcess(null);
+    }
+
+    @Override
+    public void addInterceptors(InterceptorRegistry registry) {
+        //注册用户的拦截器
+        setInterceptorPathPatterns(registry.addInterceptor(getOwn()));
+        log.info("拦截器注册成功：{}", getOwn().getClass().getName());
     }
 
     @Override
@@ -60,10 +65,22 @@ public abstract class AbstractGlobalTokenBucketFlowLimitInterceptor
         threadLocalMap.remove();//防止内存泄漏
     }
 
-    @Override
-    public void addInterceptors(InterceptorRegistry registry) {
-        //注册用户的拦截器
-        setInterceptorPathPatterns(registry.addInterceptor(getOwn()));
+    /**
+     * 因为是抽象类，没办法使用建造者模式，故使用本方法模拟。
+     *
+     * @param own
+     * @param permitsPerSecond
+     * @param warmupPeriod
+     * @param timeout
+     * @param tokenAcquire
+     */
+    public void build(AbstractGlobalTokenBucketFlowLimitInterceptor own,
+                      double permitsPerSecond,
+                      long warmupPeriod,
+                      long timeout,
+                      int tokenAcquire) {
+        aspectImpl.build(permitsPerSecond, warmupPeriod, timeout, tokenAcquire);
+        this.own = own;
     }
 
     /**
@@ -77,18 +94,32 @@ public abstract class AbstractGlobalTokenBucketFlowLimitInterceptor
         return own;
     }
 
-    public void setOwn(AbstractGlobalTokenBucketFlowLimitInterceptor own) {
-        this.own = own;
-    }
+    public class GlobalTokenBucketFlowLimitAspectImpl extends AbstractGlobalTokenBucketFlowLimitAspect {
+        @Override
+        protected boolean filterRequest(JoinPoint obj) {
+            return InterceptorUtil.filterRequest(AbstractGlobalTokenBucketFlowLimitInterceptor.this, threadLocalMap);
+        }
 
-    @Override
-    protected boolean filterRequest(JoinPoint obj) {
-        return InterceptorUtil.filterRequest(this, threadLocalMap);
-    }
+        @Override
+        protected Object rejectHandle(JoinPoint obj) throws Throwable {
+            return InterceptorUtil.rejectHandle(AbstractGlobalTokenBucketFlowLimitInterceptor.this, threadLocalMap);
+        }
 
-    @Override
-    protected Object rejectHandle(JoinPoint obj) throws Throwable {
-        return InterceptorUtil.rejectHandle(this, threadLocalMap);
+        @Override
+        public final void pointcut() {
+        }
+
+        @Override
+        protected Object otherHandle(JoinPoint joinPoint, boolean isReject, Object rejectResult) throws Throwable {
+            //true放行
+            if (ObjectUtils.isNotEmpty(rejectResult) && rejectResult instanceof Boolean) {
+                return rejectResult;
+            }
+            //被拒绝 isReject=true，返回false
+            //没有被拒绝
+            return !isReject;
+        }
+
     }
 
     /**
@@ -99,14 +130,4 @@ public abstract class AbstractGlobalTokenBucketFlowLimitInterceptor
         return null;
     }
 
-    @Override
-    protected Object otherHandle(JoinPoint obj, boolean isReject, Object rejectResult) throws Throwable {
-        //true放行
-        if (ObjectUtils.isNotEmpty(rejectResult) && rejectResult instanceof Boolean) {
-            return rejectResult;
-        }
-        //被拒绝 isReject=true，返回false
-        //没有被拒绝
-        return !isReject;
-    }
 }

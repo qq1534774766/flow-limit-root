@@ -13,7 +13,7 @@ import org.aspectj.lang.annotation.Pointcut;
 //@Aspect
 public class RedisFlowLimitConfig extends AbstractRedisFlowLimitAspect {
 
-    @Pointcut("within(cn.sinohealth.flowlimit.springboot.starter.test.TestController)" +
+    @Pointcut("within(com.aguo.flowlimit.controller.IndexController)" +
             "&&@annotation(org.springframework.web.bind.annotation.RequestMapping)")
     public void pointcut() {
     }

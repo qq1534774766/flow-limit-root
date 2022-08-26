@@ -1,6 +1,7 @@
 package com.aguo.flowlimit.config;
 
 import com.aguo.flowlimit.core.interceptor.AbstractRedisFlowLimitInterceptor;
+import org.springframework.stereotype.Component;
 import org.springframework.web.servlet.config.annotation.InterceptorRegistration;
 
 import javax.servlet.http.HttpServletRequest;
@@ -11,7 +12,7 @@ import javax.servlet.http.HttpServletResponse;
  * @DateTime: 2022/7/29 11:10
  * @Description: TODO
  */
-//@Component
+@Component
 public class RedisFlowLimitInterceptorConfig extends AbstractRedisFlowLimitInterceptor {
 
 
