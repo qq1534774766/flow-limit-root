@@ -6,6 +6,7 @@ import com.fasterxml.jackson.annotation.PropertyAccessor;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
+import io.netty.util.concurrent.DefaultEventExecutor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.ObjectUtils;
 import org.springframework.data.redis.connection.RedisConnectionFactory;
@@ -17,6 +18,7 @@ import org.springframework.data.redis.serializer.RedisSerializer;
 import org.springframework.data.redis.serializer.StringRedisSerializer;
 
 import java.util.*;
+import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
@@ -72,26 +74,26 @@ public class FlowLimitCacheHelper {
 
     private void initRedisStrategyService(RedisConnectionFactory redisConnectionFactory) {
         //Redis策略初始化
-        RedisStrategyService redisStrategyService = new RedisStrategyService(redisConnectionFactory);
-        this.cacheHelperFactory.addStrategyService(CacheDataSourceTypeEnum.Redis, redisStrategyService);
+        RedisStrategyServiceImpl redisStrategyServiceImpl = new RedisStrategyServiceImpl(redisConnectionFactory);
+        this.cacheHelperFactory.addStrategyService(CacheDataSourceTypeEnum.Redis, redisStrategyServiceImpl);
     }
 
     private void initLocalStrategyService(List<Long> counterHoldingTime, TimeUnit timeUnit) {
         //本地缓存策略初始化
-        LocalStrategyService localStrategyService = new LocalStrategyService(counterHoldingTime, timeUnit);
+        LocalStrategyServiceImpl localStrategyServiceImpl = new LocalStrategyServiceImpl(counterHoldingTime, timeUnit);
         //构建缓存对象
         if (CacheDataSourceTypeEnum.Local == strategy) {
 
-            localStrategyService.buildCache();
+            localStrategyServiceImpl.buildCache();
         }
-        this.cacheHelperFactory.addStrategyService(CacheDataSourceTypeEnum.Local, localStrategyService);
+        this.cacheHelperFactory.addStrategyService(CacheDataSourceTypeEnum.Local, localStrategyServiceImpl);
     }
 
     public void MySqlStrategyService() {
         //MySql数据源初始化
-        MySQLStrategyService mySQLStrategyService = new MySQLStrategyService();
+        MySQLStrategyServiceImpl mySQLStrategyServiceImpl = new MySQLStrategyServiceImpl();
         //设置工厂策略
-        this.cacheHelperFactory.addStrategyService(CacheDataSourceTypeEnum.MySql, mySQLStrategyService);
+        this.cacheHelperFactory.addStrategyService(CacheDataSourceTypeEnum.MySql, mySQLStrategyServiceImpl);
     }
 
     public Boolean increaseKeySafely(String key, Long timeout, Integer CountMax) {
@@ -155,7 +157,7 @@ public class FlowLimitCacheHelper {
         Boolean increaseKeySafely(String key, Long timeout, Integer CountMax) throws Exception;
     }
 
-    public static class RedisStrategyService implements IFlowLimitStrategyService {
+    public static class RedisStrategyServiceImpl implements IFlowLimitStrategyService {
         private static final String LUA_INC_SCRIPT_TEXT =
                 "local counterKey = KEYS[1]; " +
                         "local timeout = ARGV[1]; " +
@@ -172,7 +174,7 @@ public class FlowLimitCacheHelper {
         private static final DefaultRedisScript<Long> REDIS_INC_SCRIPT = new DefaultRedisScript<>(LUA_INC_SCRIPT_TEXT, Long.class);
         private final RedisTemplate<String, Object> redisTemplate;
 
-        public RedisStrategyService(RedisConnectionFactory redisConnectionFactory) {
+        public RedisStrategyServiceImpl(RedisConnectionFactory redisConnectionFactory) {
             this.redisTemplate = userInfoRedisTemplate(redisConnectionFactory);
         }
 
@@ -244,7 +246,7 @@ public class FlowLimitCacheHelper {
         }
     }
 
-    public static class LocalStrategyService implements IFlowLimitStrategyService {
+    public static class LocalStrategyServiceImpl implements IFlowLimitStrategyService {
         List<Long> counterHoldingTime;
         TimeUnit timeUnit;
         /**
@@ -256,15 +258,15 @@ public class FlowLimitCacheHelper {
          */
         private Map<Long, Cache<String, Integer>> cacheMap;
 
-        public LocalStrategyService() {
+        public LocalStrategyServiceImpl() {
         }
 
-        public LocalStrategyService(List<Long> counterHoldingTime, TimeUnit timeUnit) {
+        public LocalStrategyServiceImpl(List<Long> counterHoldingTime, TimeUnit timeUnit) {
             this.counterHoldingTime = counterHoldingTime;
             this.timeUnit = timeUnit;
         }
 
-        public LocalStrategyService(Map<Long, Caffeine<Object, Object>> caffeineMap) {
+        public LocalStrategyServiceImpl(Map<Long, Caffeine<Object, Object>> caffeineMap) {
             this.caffeineMap = caffeineMap;
         }
 
@@ -348,7 +350,7 @@ public class FlowLimitCacheHelper {
         }
     }
 
-    public static class MySQLStrategyService implements IFlowLimitStrategyService {
+    public static class MySQLStrategyServiceImpl implements IFlowLimitStrategyService {
 
         @Override
         public Integer getOne(String key) throws Exception {
@@ -376,7 +378,7 @@ public class FlowLimitCacheHelper {
     }
 
     public static class CacheHelperFactory {
-        private static final Timer CHANGE_STRATEGY_TIMER = new Timer();
+        private static final ScheduledExecutorService executor = new DefaultEventExecutor();
         private final Map<CacheDataSourceTypeEnum, IFlowLimitStrategyService> map = new HashMap<>();
 
         public void addStrategyService(CacheDataSourceTypeEnum dataSourceTypeEnum, IFlowLimitStrategyService strategyService) {
@@ -435,20 +437,17 @@ public class FlowLimitCacheHelper {
             strategy = CacheDataSourceTypeEnum.Local;
             //构建缓存对象
             Optional.ofNullable(map.get(CacheDataSourceTypeEnum.Local))
-                    .ifPresent(o -> ((LocalStrategyService) o).buildCache());
-            //取消之前的定时器
+                    .ifPresent(o -> ((LocalStrategyServiceImpl) o).buildCache());
             try {
-                CHANGE_STRATEGY_TIMER.cancel();
+                //取消之前的定时器
+//                executor.shutdown();不取消也没影响。
                 //开启新的定时器
-                CHANGE_STRATEGY_TIMER.schedule(new TimerTask() {
-                    @Override
-                    public void run() {
-                        strategy = CacheDataSourceTypeEnum.Redis;
-                        log.warn("Flow-Limit-Starter：恢复【{}】作为数据源", strategy);
-                    }
-                }, 3600 * 1000);
+                executor.schedule(() -> {
+                    strategy = CacheDataSourceTypeEnum.Redis;
+                    log.warn("Flow-Limit-Starter：恢复【{}】作为数据源", strategy);
+                }, 1L, TimeUnit.HOURS);
             } catch (Exception e) {
-
+                log.error("启动延迟任务失败");
             }
 
         }
