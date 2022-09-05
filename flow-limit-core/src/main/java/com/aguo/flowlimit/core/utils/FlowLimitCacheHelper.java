@@ -378,7 +378,7 @@ public class FlowLimitCacheHelper {
     }
 
     public static class CacheHelperFactory {
-        private static final ScheduledExecutorService executor = new DefaultEventExecutor();
+        private static final ScheduledExecutorService EXECUTOR = new DefaultEventExecutor();
         private final Map<CacheDataSourceTypeEnum, IFlowLimitStrategyService> map = new HashMap<>();
 
         public void addStrategyService(CacheDataSourceTypeEnum dataSourceTypeEnum, IFlowLimitStrategyService strategyService) {
@@ -442,7 +442,7 @@ public class FlowLimitCacheHelper {
                 //取消之前的定时器
 //                executor.shutdown();不取消也没影响。
                 //开启新的定时器
-                executor.schedule(() -> {
+                EXECUTOR.schedule(() -> {
                     strategy = CacheDataSourceTypeEnum.Redis;
                     log.warn("Flow-Limit-Starter：恢复【{}】作为数据源", strategy);
                 }, 1L, TimeUnit.HOURS);

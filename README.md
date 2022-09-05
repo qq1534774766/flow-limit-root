@@ -14,7 +14,7 @@ flow-limit-root
 
 |---flow-limit-test
 
-- 更新日志：
+- flow-limit-spring-boot-starter更新日志：
   - v1.0:实现`Redis AOP`计数器限流。
   - v1.1:重构启动器结构，使用**`模板方法模式`**。
   - v1.2:新增Redis拦截器方式，本质是`Redis AOP`适配，即**`适配器模式`**。
@@ -27,6 +27,9 @@ flow-limit-root
     - **当Redis无法使用或宕机时**，自动切换到本地数据源！延迟1小时后，自动切换回`Redis数据源`
   - v1.6
     - 新增AOP方式的**全局**令牌桶速度限制器，包含AOP与拦截器两种方式。
+- flow-limit-root更新日志
+  - v1.0：完成flow-limit-spring-boot-starter到flow-limit-root的迁移工作，功能一切测试正常。
+
 
 简单使用，只需引入依赖，简单配置一下就能使用，无侵入，易插拔，易使用。
 
